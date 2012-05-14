@@ -1,0 +1,12 @@
+{
+  "author": "David Jensen <david.lgj@gmail.com> (burningbroccoli.se)",
+  "name": "raspberry-gpio",
+  "description": "Control Raspberry Pi's GPIO pins",
+  "version": "0.0.0",
+  "dependencies": {},
+  "devDependencies": {},
+  "optionalDependencies": {},
+  "engines": {
+    "node": "*"
+  }
+}
