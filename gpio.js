@@ -17,99 +17,116 @@
 
 var fs = require('fs');
 
-var gpio_map = {
-    3:0, 
-    5:1,
-    7:4, 
-    8:14,
-    10:15,
-    11:17,
-    12:18,
-    13:21,
-    15:22, 
-    16:23,
-    18:24, 
-    19:10, 
-    21:9, 
-    22:25, 
-    23:11, 
-    24:8,
-    26:7
-}
-
+//Available pins (GPIO nr)  0, 1, 4, 7, 8, 9, 10, 11, 14, 15, 17, 18, 21, 22, 23, 24, 25
 
 exports.HIGH = true;
 exports.LOW  = false;
 
+/**
+ * Unexport a GPIO
+ */
+exports.unexport = function (gpio,cb) {
+    fs.writeFile('/sys/class/gpio/unexport',gpio,cb);
+};
 
-var translate_pin = function (pin) {
-    if (!gpio_map[pin]) {
-        throw "Unkown Pin nr";
-    }
-    return gpio_map[pin];
+/**
+ * Export a GPIO so that it can be used
+ */
+exports.export = function (gpio,cb) {
+    fs.writeFile('/sys/class/gpio/export',gpio,cb);
 };
 
 
-var unexport = function (pin,cb) {
-    fs.writeFile('/sys/class/gpio/unexport',pin,cb);
+/**
+ * Checks if a GPIO is exported
+ */
+exports.exported = function (gpio,callback) {
+     fs.exists('/sys/class/gpio/gpio'+gpio,callback);
 };
 
-var mode = function (pin,direction,cb) {
-    fs.writeFile('/sys/class/gpio/export',pin,function(){
-        fs.writeFile('/sys/class/gpio/gpio'+pin+'/direction',direction,cb);    
-    });
+
+/**
+ * Set mode, i.e. 'out' or 'in' of GPIO, must be exported first
+ */
+exports.mode = function (gpio,direction,cb) {
+    fs.writeFile('/sys/class/gpio/gpio'+gpio+'/direction',direction,cb);
 }
 
-exports.setup = function (rpi_pin,direction,callback) {
-    var pin = translate_pin(rpi_pin);
-    
+
+/**
+ * Convinience function to setup a GPIO pin,
+ * if already in use it will be unexported, exported and mode set
+ */  
+exports.setup = function (gpio,direction,callback) {
     //let's start by checking if it's already configured
-    fs.stat('/sys/class/gpio/gpio'+pin,function(stat){
-        if (stat.code !== 'ENOENT') {
+    exports.exported(gpio,function(exists){
+        if (exists) {
             //already configured let's unexport first
-            unexport(pin,function(){
-                mode(pin,direction,callback);
+            exports.unexport(gpio,function(err){
+                if (err) {
+                    callback(err);
+                } else {
+                    exports.mode(gpio,direction,callback);
+                }
             });
         } else {
             //just export and set mode
-            mode(pin,direction,callback);
+            exports.export(gpio,function(err){
+                if (err) {
+                    callback(err);
+                } else {
+                    exports.mode(gpio,direction,callback);
+                }
+            });
         }
     });
 };    
     
 
-exports.out = function(rpi_pin,val,callback) {
-    var pin = translate_pin(rpi_pin);
-    
-    fs.writeFile('/sys/class/gpio/gpio'+pin+'/value',val?1:0,callback);
+/**
+ * Set value of GPIO in mode 'out'
+ */
+exports.out = function(gpio,val,callback) {
+    fs.writeFile('/sys/class/gpio/gpio'+gpio+'/value',val?1:0,callback);
 };
 
-exports.high = function(rpi_pin, callback) {
-    exports.out(rpi_pin,true,callback);
+/**
+ * Set value of GPIO in mode 'out' to HIGH
+ */
+exports.high = function(gpio, callback) {
+    exports.out(gpio,true,callback);
 };
 
-exports.low = function(rpi_pin, callback) {
-    exports.out(rpi_pin,false,callback);
+/**
+ * Set value of GPIO in mode 'out' to LOW
+ */
+exports.low = function(gpio, callback) {
+    exports.out(gpio,false,callback);
 };
 
 
-exports.read = function(rpi_pin,callback) {
-    var pin = translate_pin(rpi_pin);
-    
-    fs.readFile('/sys/class/gpio/gpio'+pin+'/value',function(err,data){
-        callback(data);
+/**
+ * Read value from GPIO pin with mode 'in'
+ */
+exports.read = function(gpio,callback) {
+    fs.readFile('/sys/class/gpio/gpio'+gpio+'/value',callback);
+};
+
+/**
+ * Check if GPIO with mode 'in' reads a HIGH
+ */
+exports.isHigh = function(gpio,callback) {
+    exports.read(gpio,function(err,data) {
+        callback(err,data === '1');
     });
 };
 
-exports.isHigh = function(rpi_pin,callback) {
-    exports.read(rpi_pin,function(data) {
-        callback(data === '1');
-    });
-};
-
-exports.isLow = function(rpi_pin,callback) {
-    exports.read(rpi_pin,function(data) {
-        callback(data !== '1');
+/**
+ * Check if GPIO with mode 'in' reads a LOW
+ */
+exports.isLow = function(gpio,callback) {
+    exports.read(gpio,function(err,data) {
+        callback(err,data !== '1');
     });
 };
 
