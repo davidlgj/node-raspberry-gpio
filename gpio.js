@@ -21,6 +21,8 @@ var fs = require('fs');
 
 exports.HIGH = true;
 exports.LOW  = false;
+exports.OUT  = 'out';
+exports.IN   = 'in';
 
 /**
  * Unexport a GPIO
@@ -41,7 +43,13 @@ exports.export = function (gpio,cb) {
  * Checks if a GPIO is exported
  */
 exports.exported = function (gpio,callback) {
-     fs.exists('/sys/class/gpio/gpio'+gpio,callback);
+     fs.stat('/sys/class/gpio/gpio'+gpio,function(err,stats){
+        if (err) { //propbably a ENOENT
+            callback(false);
+        } else {
+            callback(true);
+        } 
+     });
 };
 
 
@@ -59,8 +67,10 @@ exports.mode = function (gpio,direction,cb) {
  */  
 exports.setup = function (gpio,direction,callback) {
     //let's start by checking if it's already configured
-    exports.exported(gpio,function(exists){
-        if (exists) {
+    exports.exported(gpio,function(err,exists){
+        if (err) {
+            callback(err);
+        } else if (exists) {
             //already configured let's unexport first
             exports.unexport(gpio,function(err){
                 if (err) {
