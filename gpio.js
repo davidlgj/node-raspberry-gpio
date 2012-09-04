@@ -67,10 +67,8 @@ exports.mode = function (gpio,direction,cb) {
  */  
 exports.setup = function (gpio,direction,callback) {
     //let's start by checking if it's already configured
-    exports.exported(gpio,function(err,exists){
-        if (err) {
-            callback(err);
-        } else if (exists) {
+    exports.exported(gpio,function(exists){
+        if (exists) {
             //already configured let's unexport first
             exports.unexport(gpio,function(err){
                 if (err) {
